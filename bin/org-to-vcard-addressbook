@@ -1,0 +1,15 @@
+#!/usr/bin/perl
+
+use 5.010;
+use strict;
+use warnings;
+
+# VERSION
+
+use Perinci::CmdLine;
+Perinci::CmdLine->new(
+    url=>'/Org/To/vCard/Addressbook/org_to_vcard_addressbook')->run;
+
+1;
+# ABSTRACT: Export contacts in Org document to vCard addressbook
+# PODNAME: org-to-vcard-addressbook
