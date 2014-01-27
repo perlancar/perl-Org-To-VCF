@@ -16,6 +16,7 @@ use experimental 'smartmatch';
 extends 'Org::To::Base';
 
 has default_country => (is => 'rw');
+has export_notes => (is => 'rw');
 has _vcf => (is => 'rw'); # vcf object
 has _cccode => (is => 'rw'); # country calling code
 
@@ -93,10 +94,17 @@ recommended so the phone numbers are nicely formatted as international number.
 
 _
         },
+        export_notes => {
+            summary => 'Whether to export note fields',
+            schema  => ['bool*', default=>1],
+        },
     }
 };
 sub org_to_vcf {
     my %args = @_;
+
+    # XXX schema
+    $args{export_notes} //= 1;
 
     my $doc;
     if ($args{source_file}) {
@@ -112,6 +120,7 @@ sub org_to_vcf {
         include_tags    => $args{include_tags},
         exclude_tags    => $args{exclude_tags},
         default_country => $args{default_country},
+        export_notes    => $args{export_notes},
     );
 
     my $vcf = Text::vCard::Addressbook->new;
@@ -237,7 +246,7 @@ sub _parse_field {
         # note is from note fields or everything that does not have field names
         # or any field that is not parsed (but limit it to 3 for now)
         $fields->{_num_notes} //= 0;
-        if ($fields->{_num_notes}++ < 3) {
+        if ($self->export_notes && $fields->{_num_notes}++ < 3) {
             $fields->{NOTE} .= ( $fields->{NOTE} ? "\n" : "" ) .
                 ($key ? "$key: " : "") . $textval;
             $log->tracef("%s NOTE field: %s",
