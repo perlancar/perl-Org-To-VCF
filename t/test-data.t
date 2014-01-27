@@ -12,13 +12,13 @@ use Test::More 0.96;
 require "testlib.pl";
 
 test_to_vcf(
-    name => 'example.org',
+    name => '1.org',
     args => {
-        source_file=>"$Bin/data/example.org",
+        source_file=>"$Bin/data/1.org",
         default_country => "ID",
     },
     status => 200,
-    result => scalar read_file("$Bin/data/example.vcf"),
+    result => scalar read_file("$Bin/data/1.vcf"),
 );
 
 done_testing();

@@ -258,7 +258,6 @@ sub _parse_field {
 }
 
 sub _add_vcard {
-    require Text::vCard;
     no strict 'refs';
 
     my ($self, $fields) = @_;
