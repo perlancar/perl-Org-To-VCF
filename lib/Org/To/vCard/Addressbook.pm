@@ -8,10 +8,16 @@ use vars qw($VERSION);
 use File::Slurp;
 use Org::Document;
 use Org::Dump qw();
+use Scalar::Util qw(blessed);
+use Text::vCard::Addressbook;
 
 use Moo;
 use experimental 'smartmatch';
 extends 'Org::To::Base';
+
+has default_country => (is => 'rw');
+has _vcf => (is => 'rw'); # vcf object
+has _cccode => (is => 'rw'); # country calling code
 
 # VERSION
 
@@ -22,25 +28,33 @@ our @EXPORT_OK = qw(org_to_vcard_addressbook);
 
 our %SPEC;
 $SPEC{org_to_vcard_addressbook} = {
+    v => 1.1,
     summary => 'Export contacts in Org document to VCF (vCard addressbook)',
     args => {
-        source_file => ['str' => {
+        source_file => {
             summary => 'Source Org file to export',
-        }],
-        source_str => ['str' => {
+            schema  => ['str' => {
+            }],
+        },
+        source_str => {
             summary => 'Alternatively you can specify Org string directly',
-        }],
-        target_file => ['str' => {
+            schema  => ['str' => {
+            }],
+        },
+        target_file => {
             summary => 'VCF file to write to',
+            schema => ['str' => {}],
             description => <<'_',
 
 If not specified, VCF output string will be returned instead.
 
 _
-        }],
-        include_tags => ['array' => {
-            of => 'str*',
+        },
+        include_tags => {
             summary => 'Include trees that carry one of these tags',
+            schema => ['array' => {
+                of => 'str*',
+            }],
             description => <<'_',
 
 Works like Org's 'org-export-select-tags' variable. If the whole document
@@ -50,10 +64,12 @@ selected tree is a subtree, the heading hierarchy above it will also be selected
 for export, but not the text below those headings.
 
 _
-        }],
-        exclude_tags => ['array' => {
-            of => 'str*',
+        },
+        exclude_tags => {
             summary => 'Exclude trees that carry one of these tags',
+            schema => ['array' => {
+                of => 'str*',
+            }],
             description => <<'_',
 
 If the whole document doesn't have any of these tags, then the whole document
@@ -64,7 +80,19 @@ also be selected for export, but not the text below those headings.
 exclude_tags is evaluated after include_tags.
 
 _
-        }],
+        },
+        default_country => {
+            summary => 'Specify default country code',
+            schema  => ['str*'],
+            description => <<'_',
+
+Free-form phone numbers on phone fields are formatted by this function, e.g.
+`081 123 4567` becomes `0811234567`. If default country is specified (e.g.
+"ID"), the number will be formatted as `+62811234567`. Setting this option is
+recommended so the phone numbers are nicely formatted as international number.
+
+_
+        },
     }
 };
 sub org_to_vcard_addressbook {
@@ -81,17 +109,33 @@ sub org_to_vcard_addressbook {
     }
 
     my $obj = __PACKAGE__->new(
-        include_tags => $args{include_tags},
-        exclude_tags => $args{exclude_tags},
+        include_tags    => $args{include_tags},
+        exclude_tags    => $args{exclude_tags},
+        default_country => $args{default_country},
     );
 
-    my $vcf = $obj->export($doc);
+    my $vcf = Text::vCard::Addressbook->new;
+    $obj->{_vcf} = $vcf;
+
+    $obj->export($doc);
     #$log->tracef("vcf = %s", $vcf);
     if ($args{target_file}) {
-        write_file($args{target_file}, $vcf);
+        write_file($args{target_file}, $vcf->export);
         return [200, "OK"];
     } else {
-        return [200, "OK", $vcf];
+        return [200, "OK", $vcf->export];
+    }
+}
+
+sub BUILD {
+    my ($self, $args) = @_;
+
+    if ($args->{default_country}) {
+        require Number::Phone::CountryCode;
+        my $pc = Number::Phone::CountryCode->new($args->{default_country});
+        die "Can't find country calling code for country ".
+            "'$args->{default_country}'" unless $pc;
+        $self->{_cccode} = $pc->country_code;
     }
 }
 
@@ -103,13 +147,31 @@ sub _clean_field {
     $str;
 }
 
+# XXX don't lose extension information, e.g. +62 22 1234567 ext 10
+sub _format_phone {
+    my ($self, $str) = @_;
+    if ($str =~ /^\+/) {
+        $str =~ s/[^0-9]//g;
+        return "+$str";
+    } else {
+        $str =~ s/[^0-9]//g;
+        if ($self->{_cccode}) {
+            $str =~ s/^0//;
+            return "+$self->{_cccode}$str";
+        } else {
+            return $str;
+        }
+    }
+}
+
 sub _parse_field {
     my ($self, $fields, $key, $textval, $vals) = @_;
     $vals = [$vals] unless ref($vals) eq 'ARRAY';
     if ($log->is_trace) {
         $log->tracef("parsing field: key=%s, textval=%s, vals=%s",
                      $key, $textval,
-                     [map {Org::Dump::dump_element($_)} @$vals]);
+                     [map {blessed($_) && $_->isa('Org::Element') ?
+                               Org::Dump::dump_element($_) : $_} @$vals]);
     }
     $key = $self->_clean_field($key);
     $textval = $self->_clean_field($textval);
@@ -130,11 +192,89 @@ sub _parse_field {
         if (@ts) {
             $fields->{BDAY} = $ts[0]->datetime->ymd;
             $log->tracef("found BDAY field: %s", $fields->{BDAY});
+            $fields->{_has_contact} = 1;
         } else {
             # or from a regex match
             if ($textval =~ /(\d{4}-\d{2}-\d{2})/) {
                 $fields->{BDAY} = $1;
                 $log->tracef("found BDAY field: %s", $fields->{BDAY});
+                $fields->{_has_contact} = 1;
+            }
+        }
+    } elsif ($key =~ /(?:phone|cell|portable|mobile|mob|\bph\b|\bf\b|fax) |
+                      (?:te?l[pf](on)|selul[ae]r|\bfaks|\bhp\b|\bhape\b)
+                     /ix) {
+        $fields->{TEL} //= {};
+        my $type;
+        if ($key =~ /fax |
+                     faks/ix) {
+            $type = "fax";
+        } elsif ($key =~ /(?:cell|hand|portable|mob) |
+                          (?:sel|hp|hape)
+                         /ix) {
+            $type = "mobile";
+        } elsif ($key =~ /(?:wo?rk|office|ofc) |
+                          (?:kerja|krj|kantor|ktr)
+                         /ix) {
+            $type = "work";
+        } elsif ($key =~ /(?:home) |
+                          (?:rumah|rmh)
+                         /ix) {
+            $type = "home";
+        } else {
+            # XXX use Number::Phone to parse phone number (is_mobile() etc)
+            $type = "mobile";
+        }
+        $fields->{TEL}{$type} = $self->_format_phone($textval);
+        $log->tracef("found TEL ($type) field: %s", $fields->{TEL}{$type});
+        $fields->{_has_contact} = 1;
+    } elsif ($key =~ /^((?:e[-]?mail|mail) |
+                          (?:i[ -]?mel|surel))$/ix) {
+        $fields->{EMAIL} = $textval;
+        $log->tracef("found EMAIL field: %s", $fields->{EMAIL});
+        $fields->{_has_contact} = 1;
+    } else {
+        # note is from note fields or everything that does not have field names
+        # or any field that is not parsed (but limit it to 3 for now)
+        $fields->{_num_notes} //= 0;
+        if ($fields->{_num_notes}++ < 3) {
+            $fields->{NOTE} .= ( $fields->{NOTE} ? "\n" : "" ) .
+                ($key ? "$key: " : "") . $textval;
+            $log->tracef("%s NOTE field: %s",
+                         $fields->{_num_notes} == 1 ? "found" : "add",
+                         $fields->{NOTE});
+        }
+    }
+    # complex (but depreciated): N (name: family, given, middle, prefixes,
+    # suffixes)
+
+    # complex: ADR/addresses (po_box, extended, street, city, region, post_code,
+    # country, lat, long)
+
+    # complex: ORG (name, unit)
+
+    # TITLE, ROLE, URL,NICKNAME
+    # LABELS, PHOTO, TZ, MAILER?, PRODID?, REV?, SORT-STRING?, UID?, CLASS?
+}
+
+sub _add_vcard {
+    require Text::vCard;
+    no strict 'refs';
+
+    my ($self, $fields) = @_;
+
+    my $vc = $self->{_vcf}->add_vcard;
+    for my $k (keys %$fields) {
+        next if $k =~ /^_/;
+        my $v = $fields->{$k};
+        if (!ref($v)) {
+            # simple node
+            $vc->$k($v);
+        } else {
+            # complex node
+            for my $t (keys %$v) {
+                my $node = $vc->add_node({node_type=>$k, types => $t});
+                $node->value($v->{$t});
             }
         }
     }
@@ -150,7 +290,7 @@ sub export_headline {
                          String::Escape::printable($elem->as_string), 30));
     }
 
-    my $vcards = $self->{_vcards};
+    my $vcf = $self->{_vcf};
     my @subhl = grep {
         $_->isa('Org::Element::Headline') && !$_->is_todo }
         $self->_included_children($elem);
@@ -180,6 +320,8 @@ sub export_headline {
                                             $key,
                                             $val,
                                             $c2);
+                    } else {
+                        $self->_parse_field($fields, "note", $val, $c2);
                     }
                 }
              }
@@ -187,6 +329,7 @@ sub export_headline {
     }
 
     $log->tracef("fields: %s", $fields);
+    $self->_add_vcard($fields) if $fields->{_has_contact};
 
     $self->export_headline($_) for @subhl;
 }
@@ -211,7 +354,7 @@ sub export_elements {
 1;
 # ABSTRACT: Export contacts in Org document to VCF (vCard addressbook)
 
-=for Pod::Coverage ^(vcf|export|export_.+)$
+=for Pod::Coverage ^(default_country|export|export_.+)$
 
 =head1 SYNOPSIS
 
@@ -234,12 +377,14 @@ My use case: I maintain my addressbook in an Org document C<addressbook.org>
 which I regularly export to VCF and then import to Android phones.
 
 How contacts are found in an Org document: each contact is written in an Org
-headline (of whatever level), e.g.:
+headline (of whatever level) in a rather free-form format, e.g.:
 
  ** dad # [2014-01-25 Sat]  :remind_anniv:
  - fullname :: frasier crane
  - birthday :: [1900-01-02 ]
  - cell :: 0811 000 0001
+ - some note
+ *** TODO get dad's jakarta office number
 
 Todo items (headline with todo labels) are currently excluded.
 
@@ -260,6 +405,14 @@ drawer:
  :END:
  This is one of my friend.
  *** TODO Call him for the party
+
+
+=head1 TODO
+
+This is an early release. An important node, addresses (ADR), not parsed yet
+because my use case is currently for phone's phonebook.
+
+Other unimplemented nodes are listed in the source code.
 
 
 =head1 SEE ALSO

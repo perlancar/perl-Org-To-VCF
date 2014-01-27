@@ -4,17 +4,17 @@ use 5.010;
 use strict;
 use warnings;
 
-use Org::To::vCard::Addressbook qw(org_to_vcard_addressbook);
+use Org::To::VCF qw(org_to_vcf);
 use Test::Differences;
 use Test::More 0.98;
 
-sub test_to_vcard_addressbook {
+sub test_to_vcf {
     my %args = @_;
 
     subtest $args{name} => sub {
         my $res;
         eval {
-            $res = org_to_vcard_addressbook(%{$args{args}});
+            $res = org_to_vcf(%{$args{args}});
         };
         my $eval_err = $@;
 

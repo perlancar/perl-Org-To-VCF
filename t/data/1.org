@@ -1,4 +1,5 @@
 ** mom # [2014-01-25 Sat]                                      :remind_anniv:
+- some note
 - name :: gillian anderson
 - birthday :: [1900-12-27 ]
 - test: test

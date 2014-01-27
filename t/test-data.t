@@ -11,25 +11,13 @@ use File::Slurp;
 use Test::More 0.96;
 require "testlib.pl";
 
-test_to_html(
+test_to_vcf(
     name => 'example.org',
     args => {
         source_file=>"$Bin/data/example.org",
-        html_title => 'Example',
-        css_url => 'style.css',
     },
     status => 200,
-    result => scalar read_file("$Bin/data/example.org.html"),
-);
-
-test_to_html(
-    name => 'example.org',
-    args => {
-        source_file=>"$Bin/data/naked.org",
-        naked=>1,
-    },
-    status => 200,
-    result => scalar read_file("$Bin/data/naked.org.html"),
+    result => scalar read_file("$Bin/data/example.vcf"),
 );
 
 done_testing();
