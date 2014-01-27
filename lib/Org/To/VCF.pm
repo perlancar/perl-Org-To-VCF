@@ -271,17 +271,23 @@ sub _add_vcard {
 
     my ($self, $fields) = @_;
 
+    #$log->tracef("adding vcard");
     my $vc = $self->{_vcf}->add_vcard;
     for my $k (keys %$fields) {
         next if $k =~ /^_/;
         my $v = $fields->{$k};
         if (!ref($v)) {
-            # simple node
+            #$log->tracef("  adding simple vcard node: %s => %s", $k, $v);
             $vc->$k($v);
         } else {
-            # complex node
-            for my $t (keys %$v) {
-                my $node = $vc->add_node({node_type=>$k, types => $t});
+            my @tt = keys %$v;
+            for my $t (@tt) {
+                #$log->tracef("  adding complex vcard node: %s, types=%s", $k, $t);
+                my $node = $vc->add_node({
+                    node_type=>$k,
+                    types => $t, # doesn't work? must use add_types()
+                });
+                $node->add_types($t);
                 $node->value($v->{$t});
             }
         }
