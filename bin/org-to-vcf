@@ -8,8 +8,8 @@ use warnings;
 
 use Perinci::CmdLine;
 Perinci::CmdLine->new(
-    url=>'/Org/To/vCard/Addressbook/org_to_vcard_addressbook')->run;
+    url=>'/Org/To/VCF/org_to_vcf')->run;
 
 1;
 # ABSTRACT: Export contacts in Org document to vCard addressbook
-# PODNAME: org-to-vcard-addressbook
+# PODNAME: org-to-vcf

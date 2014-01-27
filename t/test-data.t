@@ -15,6 +15,7 @@ test_to_vcf(
     name => 'example.org',
     args => {
         source_file=>"$Bin/data/example.org",
+        default_country => "ID",
     },
     status => 200,
     result => scalar read_file("$Bin/data/example.vcf"),

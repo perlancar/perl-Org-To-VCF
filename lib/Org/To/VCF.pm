@@ -1,4 +1,4 @@
-package Org::To::vCard::Addressbook;
+package Org::To::VCF;
 
 use 5.010001;
 use Log::Any '$log';
@@ -24,10 +24,10 @@ has _cccode => (is => 'rw'); # country calling code
 require Exporter;
 our @ISA;
 push @ISA,       qw(Exporter);
-our @EXPORT_OK = qw(org_to_vcard_addressbook);
+our @EXPORT_OK = qw(org_to_vcf);
 
 our %SPEC;
-$SPEC{org_to_vcard_addressbook} = {
+$SPEC{org_to_vcf} = {
     v => 1.1,
     summary => 'Export contacts in Org document to VCF (vCard addressbook)',
     args => {
@@ -95,7 +95,7 @@ _
         },
     }
 };
-sub org_to_vcard_addressbook {
+sub org_to_vcf {
     my %args = @_;
 
     my $doc;
@@ -358,9 +358,9 @@ sub export_elements {
 
 =head1 SYNOPSIS
 
- use Org::To::vCard::Addressbook qw(org_to_vcard_addressbook);
+ use Org::To::VCF qw(org_to_vcf);
 
- my $res = org_to_vcard_addressbook(
+ my $res = org_to_vcf(
      source_file   => 'addressbook.org', # or source_str
      #target_file  => 'addressbook.vcf', # defaults return the VCF in $res->[2]
      #include_tags => [...], # default exports all tags
