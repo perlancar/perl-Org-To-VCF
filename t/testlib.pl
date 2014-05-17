@@ -31,6 +31,7 @@ sub test_to_vcf {
 
         if ($args{result}) {
             my $vcf = $res->[2];
+            $vcf =~ s/\r//g;
             #$vcf =~ s/<!-- .* -->\n//sg;
             eq_or_diff($vcf, $args{result}, "result");
         }
