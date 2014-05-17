@@ -5,7 +5,7 @@ use Log::Any '$log';
 
 use vars qw($VERSION);
 
-use File::Slurp;
+use File::Slurp::Tiny qw(read_file write_file);
 use Org::Document;
 use Org::Dump qw();
 use Scalar::Util qw(blessed);
@@ -21,6 +21,7 @@ has _vcf => (is => 'rw'); # vcf object
 has _cccode => (is => 'rw'); # country calling code
 
 # VERSION
+# DATE
 
 require Exporter;
 our @ISA;
