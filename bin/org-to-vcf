@@ -6,8 +6,8 @@ use warnings;
 
 # VERSION
 
-use Perinci::CmdLine;
-Perinci::CmdLine->new(
+use Perinci::CmdLine::Any;
+Perinci::CmdLine::Any->new(
     url=>'/Org/To/VCF/org_to_vcf')->run;
 
 1;
