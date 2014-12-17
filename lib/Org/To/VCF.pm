@@ -1,5 +1,8 @@
 package Org::To::VCF;
 
+# DATE
+# VERSION
+
 use 5.010001;
 use Log::Any '$log';
 
@@ -19,9 +22,6 @@ has default_country => (is => 'rw');
 has export_notes => (is => 'rw');
 has _vcf => (is => 'rw'); # vcf object
 has _cccode => (is => 'rw'); # country calling code
-
-# VERSION
-# DATE
 
 require Exporter;
 our @ISA;
@@ -367,7 +367,7 @@ sub export_elements {
 }
 
 1;
-# ABSTRACT: Export contacts in Org document to VCF (vCard addressbook)
+# ABSTRACT:
 
 =for Pod::Coverage ^(default_country|export|export_.+)$
 
