@@ -422,14 +422,6 @@ drawer:
  *** TODO Call him for the party
 
 
-=head1 TODO
-
-This is an early release. An important node, addresses (ADR), not parsed yet
-because my use case is currently for phone's phonebook.
-
-Other unimplemented nodes are listed in the source code.
-
-
 =head1 SEE ALSO
 
 For more information about Org document format, visit http://orgmode.org/
