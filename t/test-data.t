@@ -8,7 +8,7 @@ use FindBin '$Bin';
 use lib $Bin, "$Bin/t";
 
 use File::Slurp::Tiny qw(read_file);
-use Test::More 0.96;
+use Test::More 0.98;
 require "testlib.pl";
 
 test_to_vcf(

@@ -4,7 +4,7 @@ package Org::To::VCF;
 # VERSION
 
 use 5.010001;
-use Log::Any '$log';
+use Log::Any::IfLOG '$log';
 
 use vars qw($VERSION);
 
