@@ -4,7 +4,7 @@ package Org::To::VCF;
 # VERSION
 
 use 5.010001;
-use Log::Any::IfLOG '$log';
+use Log::ger;
 
 use vars qw($VERSION);
 
@@ -177,8 +177,8 @@ sub _format_phone {
 sub _parse_field {
     my ($self, $fields, $key, $textval, $vals) = @_;
     $vals = [$vals] unless ref($vals) eq 'ARRAY';
-    if ($log->is_trace) {
-        $log->tracef("parsing field: key=%s, textval=%s, vals=%s",
+    if (log_is_trace) {
+        log_trace("parsing field: key=%s, textval=%s, vals=%s",
                      $key, $textval,
                      [map {blessed($_) && $_->isa('Org::Element') ?
                                Org::Dump::dump_element($_) : $_} @$vals]);
@@ -188,7 +188,7 @@ sub _parse_field {
     if ($key =~ /^((?:full\s?)?name |
                      nama(?:\slengkap)?)$/ix) {
         $fields->{FN} = $textval;
-        $log->tracef("found FN field: %s", $textval);
+        log_trace("found FN field: %s", $textval);
     } elsif ($key =~ /^(birthday |
                           ultah|ulang\stahun|(?:tanggal\s|tgg?l\s)?lahir)$/ix) {
         # find the first timestamp field
@@ -201,13 +201,13 @@ sub _parse_field {
         }
         if (@ts) {
             $fields->{BDAY} = $ts[0]->datetime->ymd;
-            $log->tracef("found BDAY field: %s", $fields->{BDAY});
+            log_trace("found BDAY field: %s", $fields->{BDAY});
             $fields->{_has_contact} = 1;
         } else {
             # or from a regex match
             if ($textval =~ /(\d{4}-\d{2}-\d{2})/) {
                 $fields->{BDAY} = $1;
-                $log->tracef("found BDAY field: %s", $fields->{BDAY});
+                log_trace("found BDAY field: %s", $fields->{BDAY});
                 $fields->{_has_contact} = 1;
             }
         }
@@ -236,12 +236,12 @@ sub _parse_field {
             $type = "mobile";
         }
         $fields->{TEL}{$type} = $self->_format_phone($textval);
-        $log->tracef("found TEL ($type) field: %s", $fields->{TEL}{$type});
+        log_trace("found TEL ($type) field: %s", $fields->{TEL}{$type});
         $fields->{_has_contact} = 1;
     } elsif ($key =~ /^((?:e[-]?mail|mail) |
                           (?:i[ -]?mel|surel))$/ix) {
         $fields->{EMAIL} = $textval;
-        $log->tracef("found EMAIL field: %s", $fields->{EMAIL});
+        log_trace("found EMAIL field: %s", $fields->{EMAIL});
         $fields->{_has_contact} = 1;
     } else {
         # note is from note fields or everything that does not have field names
@@ -250,7 +250,7 @@ sub _parse_field {
         if ($self->export_notes && $fields->{_num_notes}++ < 3) {
             $fields->{NOTE} .= ( $fields->{NOTE} ? "\n" : "" ) .
                 ($key ? "$key: " : "") . $textval;
-            $log->tracef("%s NOTE field: %s",
+            log_trace("%s NOTE field: %s",
                          $fields->{_num_notes} == 1 ? "found" : "add",
                          $fields->{NOTE});
         }
@@ -298,9 +298,9 @@ sub _add_vcard {
 sub export_headline {
     my ($self, $elem) = @_;
 
-    if ($log->is_trace) {
+    if (log_is_trace) {
         require String::Escape;
-        $log->tracef("exporting headline %s (%s) ...", ref($elem),
+        log_trace("exporting headline %s (%s) ...", ref($elem),
                      String::Escape::elide(
                          String::Escape::printable($elem->as_string), 30));
     }
@@ -343,7 +343,7 @@ sub export_headline {
         }
     }
 
-    $log->tracef("fields: %s", $fields);
+    log_trace("fields: %s", $fields);
     $self->_add_vcard($fields) if $fields->{_has_contact};
 
     $self->export_headline($_) for @subhl;
