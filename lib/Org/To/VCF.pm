@@ -8,7 +8,7 @@ use Log::ger;
 
 use vars qw($VERSION);
 
-use File::Slurp::Tiny qw(read_file write_file);
+use File::Slurper qw(read_text write_text);
 use Org::Document;
 use Org::Dump qw();
 use Scalar::Util qw(blessed);
@@ -109,8 +109,7 @@ sub org_to_vcf {
 
     my $doc;
     if ($args{source_file}) {
-        $doc = Org::Document->new(from_string =>
-                                      scalar read_file($args{source_file}));
+        $doc = Org::Document->new(from_string => read_text($args{source_file}));
     } elsif (defined($args{source_str})) {
         $doc = Org::Document->new(from_string => $args{source_str});
     } else {
@@ -130,7 +129,7 @@ sub org_to_vcf {
     $obj->export($doc);
     #$log->tracef("vcf = %s", $vcf);
     if ($args{target_file}) {
-        write_file($args{target_file}, $vcf->export);
+        write_text($args{target_file}, $vcf->export);
         return [200, "OK"];
     } else {
         return [200, "OK", $vcf->export];
